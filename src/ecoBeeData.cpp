@@ -7,11 +7,101 @@
 #include <iostream>
 #include <filesystem>
 #include <algorithm>
+#include <array>
+#include <vector>
 #include "ConfigFile.h"
 #include "InputParser.h"
 #include "XDGFilePaths.h"
 
 using namespace std;
+
+class EcoBeeDataFile {
+private:
+    std::array<char, 3> footPrint{'\357', '\273', '\277'};
+    bool fileGood{true};
+    std::vector<std::string> header{};
+    std::vector<std::string> data;
+
+public:
+    explicit operator bool() const noexcept {
+        return fileGood;
+    }
+
+    void processDataFile(const filesystem::path &file);
+
+    bool processHeader(const std::string& line);
+
+    bool processData(const std::string& line);
+};
+
+void EcoBeeDataFile::processDataFile(const filesystem::path &file) {
+    std::cout << file.string() << ": ";
+    std::ifstream strm(file.c_str());
+    if (strm) {
+        bool footPrintGood{false};
+        std::cout << "Open\n";
+        std::string line;
+        bool headerRead = false;
+        while (fileGood && std::getline(strm, line)) {
+            // Check the footprint.
+            if (!footPrintGood) {
+                if (line.length() > footPrint.size()) {
+                    auto lineItr = line.begin();
+                    for (const auto fpReq: footPrint) {
+                        if (fpReq != *lineItr++) {
+                            strm.close();
+                            return;
+                        }
+                    }
+                }
+                footPrintGood = true;
+                continue;
+            }
+
+            if (!line.empty()) {
+                auto c1 = line.at(0);
+                if (c1 != '#') {
+                    if (headerRead) {
+                        fileGood &= processData(line);
+                    } else {
+                        if (headerRead = fileGood = processHeader(line); !headerRead)
+                            return;
+                    }
+                }
+            }
+        }
+        strm.close();
+    } else {
+        std::cerr << strerror(errno) << '\n';
+    }
+}
+
+bool EcoBeeDataFile::processHeader(const std::string& line) {
+    for ( std::string::size_type start = 0, pos = 0; start < line.length(); start = pos + 1) {
+        pos = line.find(',', start);
+        if (pos == std::string::npos) {
+            header.push_back(line.substr(start));
+            return true;
+        } else {
+            header.push_back(line.substr(start, pos - start));
+        }
+    }
+    return false;
+}
+
+bool EcoBeeDataFile::processData(const string &line) {
+    data.clear();
+    for ( std::string::size_type start = 0, pos = 0; start < line.length(); start = pos + 1) {
+        pos = line.find(',', start);
+        if (pos == std::string::npos) {
+            data.push_back(line.substr(start));
+            return data.size() == header.size();
+        } else {
+            data.push_back(line.substr(start, pos - start));
+        }
+    }
+    return data.size() == header.size();
+}
 
 int main(int argc, char **argv) {
     static constexpr std::string_view ConfigOption = "--config";
@@ -73,18 +163,19 @@ int main(int argc, char **argv) {
                     struct passwd *pw = getpwuid(geteuid());
                     dataFilePath.append(pw->pw_dir);
                     if (auto n = dataPath->find_first_of('/');
-                        n != string::npos && n < dataPath->length()) {
-                        dataFilePath.append(dataPath->substr(n+1));
+                            n != string::npos && n < dataPath->length()) {
+                        dataFilePath.append(dataPath->substr(n + 1));
                     }
                 } else {
                     dataFilePath.append(dataPath.value());
                 }
-                std::ranges::for_each( std::filesystem::directory_iterator{dataFilePath},
-                                       [dataPrefix](const auto& dir_entry) {
-                                           if (dir_entry.is_regular_file() &&
-                                                dir_entry.path().filename().string().rfind(dataPrefix.value(), 0) == 0)
-                                                   std::cout << dir_entry.path() << '\n';
-                                       } );
+                std::ranges::for_each(std::filesystem::directory_iterator{dataFilePath},
+                                      [dataPrefix](const auto &dir_entry) {
+                                          EcoBeeDataFile ecoBeeData{};
+                                          if (dir_entry.is_regular_file() &&
+                                              dir_entry.path().filename().string().rfind(dataPrefix.value(), 0) == 0)
+                                              ecoBeeData.processDataFile(dir_entry);
+                                      });
             }
         } else {
             return 1;
