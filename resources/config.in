@@ -1,0 +1,17 @@
+#
+# Configuration file for Eco Bee data importer
+#
+dataPath ~/Downloads
+dataPrefix report-421866388280
+#
+# InfluxDB parameters
+#
+# To use https set this to 1
+influxTLS 0
+# The database server host name, assumes influx is an alias for the database server.
+influxHost influx
+# The database connection port
+influxPort 8086
+# The database name to store measurements.
+influxDb ecobee
+
