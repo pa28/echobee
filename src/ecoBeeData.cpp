@@ -15,12 +15,47 @@
 
 using namespace std;
 
+/**
+ * @class EcoBeDataFile
+ * @brief Abstract the CSV file made available by ecobee
+ */
 class EcoBeeDataFile {
+public:
+    using DataLine = std::vector<std::string>;
+    using DataFile = std::vector<DataLine>;
+
+    /**
+     * Indexes into the header and data vectors.
+     */
+    enum DataIndex {
+        Date [[maybe_unused]],
+        Time [[maybe_unused]],
+        SystemSetting [[maybe_unused]],
+        SystemMode [[maybe_unused]],
+        CalendarEvent [[maybe_unused]],
+        ProgramMode [[maybe_unused]],
+        CoolSetTemp [[maybe_unused]],
+        HeatSetTemp [[maybe_unused]],
+        CurrentTemp [[maybe_unused]],
+        CurrentHumidity [[maybe_unused]],
+        OutdoorTemp [[maybe_unused]],
+        WindSpeed [[maybe_unused]],
+        CoolStage1Sec [[maybe_unused]],
+        HeadStage1Sec [[maybe_unused]],
+        FanSec [[maybe_unused]],
+        DMOffset [[maybe_unused]],
+        ThermostatTemp [[maybe_unused]],
+        ThermostatHumidity [[maybe_unused]],
+        ThermostatMotion [[maybe_unused]],
+        ThermostatAirPressure [[maybe_unused]],
+        Sensor0Temp [[maybe_unused]],
+        Sensor0Motion [[maybe_unused]],
+    };
 private:
-    std::array<char, 3> footPrint{'\357', '\273', '\277'};
-    bool fileGood{true};
-    std::vector<std::string> header{};
-    std::vector<std::string> data;
+    std::array<char, 3> footPrint{'\357', '\273', '\277'};  ///< Not really sure what this is, let's call it a footprint.
+    bool fileGood{true};    ///< True if the file passes parsing.
+    std::vector<std::string> header{};  ///< The data item headers.
+    DataFile dataFile;                  ///< The data in the file.
 
 public:
     explicit operator bool() const noexcept {
@@ -32,6 +67,35 @@ public:
     bool processHeader(const std::string& line);
 
     bool processData(const std::string& line);
+
+    [[maybe_unused]] [[nodiscard]] size_t sensorCount() const {
+        if (fileGood) {
+            return (header.size() - Sensor0Temp) / 2;
+        }
+        return 0;
+    }
+
+    [[maybe_unused]] [[nodiscard]] std::optional<const std::string> getHeader(DataIndex dataIndex) const {
+        auto idx = static_cast<size_t>(dataIndex);
+        if (fileGood && idx < header.size())
+            return header[idx];
+        return std::nullopt;
+    }
+
+    [[maybe_unused]] [[nodiscard]] std::optional<const std::string> getData(DataIndex dataIndex, const DataLine &dataLine) const {
+        auto idx = static_cast<size_t>(dataIndex);
+        if (fileGood && idx < header.size())
+            return dataLine[idx];
+        return std::nullopt;
+    }
+
+    [[maybe_unused]] [[nodiscard]] auto begin() const {
+        return dataFile.cbegin();
+    }
+
+    [[maybe_unused]] [[nodiscard]] auto end() const {
+        return dataFile.cend();
+    }
 };
 
 void EcoBeeDataFile::processDataFile(const filesystem::path &file) {
@@ -77,7 +141,7 @@ void EcoBeeDataFile::processDataFile(const filesystem::path &file) {
 }
 
 bool EcoBeeDataFile::processHeader(const std::string& line) {
-    for ( std::string::size_type start = 0, pos = 0; start < line.length(); start = pos + 1) {
+    for ( std::string::size_type start = 0, pos; start < line.length(); start = pos + 1) {
         pos = line.find(',', start);
         if (pos == std::string::npos) {
             header.push_back(line.substr(start));
@@ -90,17 +154,21 @@ bool EcoBeeDataFile::processHeader(const std::string& line) {
 }
 
 bool EcoBeeDataFile::processData(const string &line) {
-    data.clear();
-    for ( std::string::size_type start = 0, pos = 0; start < line.length(); start = pos + 1) {
+    DataLine data;
+    for ( std::string::size_type start = 0, pos; start < line.length(); start = pos + 1) {
         pos = line.find(',', start);
         if (pos == std::string::npos) {
             data.push_back(line.substr(start));
-            return data.size() == header.size();
+            break;
         } else {
             data.push_back(line.substr(start, pos - start));
         }
     }
-    return data.size() == header.size();
+    if (data.size() == header.size()) {
+        dataFile.push_back(data);
+        return true;
+    }
+    return false;
 }
 
 int main(int argc, char **argv) {
@@ -173,8 +241,14 @@ int main(int argc, char **argv) {
                                       [dataPrefix](const auto &dir_entry) {
                                           EcoBeeDataFile ecoBeeData{};
                                           if (dir_entry.is_regular_file() &&
-                                              dir_entry.path().filename().string().rfind(dataPrefix.value(), 0) == 0)
+                                              dir_entry.path().filename().string().rfind(dataPrefix.value(), 0) == 0) {
                                               ecoBeeData.processDataFile(dir_entry);
+                                              for (const auto &line : ecoBeeData) {
+                                                  std::cout << ecoBeeData.getData(EcoBeeDataFile::DataIndex::Date, line).value() << 'T'
+                                                            << ecoBeeData.getData(EcoBeeDataFile::DataIndex::Time, line).value() << " EST "
+                                                            << ecoBeeData.getData(EcoBeeDataFile::DataIndex::CurrentTemp, line).value() << '\n';
+                                              }
+                                          }
                                       });
             }
         } else {
