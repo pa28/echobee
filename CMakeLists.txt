@@ -18,7 +18,7 @@ set(ECO_BEE_CONFIG_DIR "${CMAKE_INSTALL_DATA}")
 add_compile_options(-Wall -Wextra -pedantic -Werror -Wconversion)
 
 add_executable(ecoBeeData
-        src/ecoBeeData.cpp src/ConfigFile.cpp src/XDGFilePaths.cpp)
+        src/ecoBeeData.cpp src/ConfigFile.cpp src/XDGFilePaths.cpp src/InfluxPush.cpp src/InfluxPush.h)
 
 target_link_libraries(ecoBeeData
         stdc++fs

@@ -12,6 +12,7 @@
 #include "ConfigFile.h"
 #include "InputParser.h"
 #include "XDGFilePaths.h"
+#include "InfluxPush.h"
 
 using namespace std;
 
@@ -50,6 +51,12 @@ public:
         ThermostatAirPressure [[maybe_unused]],
         Sensor0Temp [[maybe_unused]],
         Sensor0Motion [[maybe_unused]],
+        Sensor1Temp [[maybe_unused]],
+        Sensor1Motion [[maybe_unused]],
+        Sensor2Temp [[maybe_unused]],
+        Sensor2Motion [[maybe_unused]],
+        Sensor3Temp [[maybe_unused]],
+        Sensor3Motion [[maybe_unused]],
     };
 private:
     std::array<char, 3> footPrint{'\357', '\273', '\277'};  ///< Not really sure what this is, let's call it a footprint.
@@ -63,6 +70,8 @@ public:
     }
 
     void processDataFile(const filesystem::path &file);
+
+    static std::string escapeHeader(const std::string& hdr);
 
     bool processHeader(const std::string& line);
 
@@ -140,14 +149,28 @@ void EcoBeeDataFile::processDataFile(const filesystem::path &file) {
     }
 }
 
+std::string EcoBeeDataFile::escapeHeader(const std::string& hdr) {
+    auto workingHdr = hdr;
+    if (auto pos = workingHdr.rfind(" ("); pos != std::string::npos) {
+        workingHdr = workingHdr.substr(0, pos);
+    }
+
+    if (!workingHdr.empty())
+        for( auto pos = workingHdr.rfind(' '); pos > 0 && pos != std::string::npos; pos = workingHdr.rfind(' ', pos)) {
+            workingHdr.insert(pos, 1, '\\');
+        }
+
+    return workingHdr;
+}
+
 bool EcoBeeDataFile::processHeader(const std::string& line) {
     for ( std::string::size_type start = 0, pos; start < line.length(); start = pos + 1) {
         pos = line.find(',', start);
         if (pos == std::string::npos) {
-            header.push_back(line.substr(start));
+            header.push_back(escapeHeader(line.substr(start)));
             return true;
         } else {
-            header.push_back(line.substr(start, pos - start));
+            header.push_back(escapeHeader(line.substr(start, pos - start)));
         }
     }
     return false;
@@ -173,16 +196,41 @@ bool EcoBeeDataFile::processData(const string &line) {
 
 int main(int argc, char **argv) {
     static constexpr std::string_view ConfigOption = "--config";
+    bool influxTLS{false};
+    std::optional<std::string> influxHost{"influx"};
+    std::optional<std::string> influxDb{"ecobee"};
+    std::optional<long> influxPort{8086};
 
     enum class ConfigItem {
         DataPrefix,
         DataPath,
+        InfluxTLS,
+        InfluxHost,
+        InfluxPort,
+        InfluxDb,
+    };
+
+    std::array<EcoBeeDataFile::DataIndex,10> reportedData = {
+            EcoBeeDataFile::DataIndex::CurrentTemp,
+            EcoBeeDataFile::DataIndex::CurrentHumidity,
+            EcoBeeDataFile::DataIndex::OutdoorTemp,
+            EcoBeeDataFile::DataIndex::Sensor0Temp,
+            EcoBeeDataFile::DataIndex::Sensor1Temp,
+            EcoBeeDataFile::DataIndex::Sensor2Temp,
+            EcoBeeDataFile::DataIndex::Sensor3Temp,
+            EcoBeeDataFile::DataIndex::ThermostatTemp,
+            EcoBeeDataFile::DataIndex::CoolSetTemp,
+            EcoBeeDataFile::DataIndex::HeatSetTemp,
     };
 
     std::vector<ConfigFile::Spec> ConfigSpec
             {{
                      {"dataPath", ConfigItem::DataPath},
                      {"dataPrefix", ConfigItem::DataPrefix},
+                     {"influxTLS", ConfigItem::InfluxTLS},
+                     {"influxHost", ConfigItem::InfluxHost},
+                     {"influxPort", ConfigItem::InfluxPort},
+                     {"influxDb", ConfigItem::InfluxDb},
              }};
 
     std::optional<std::string> dataPath{};
@@ -215,6 +263,29 @@ int main(int argc, char **argv) {
                         });
                         validValue = dataPath.has_value();
                         break;
+                    case ConfigItem::InfluxTLS: {
+                        std::optional<long> value = configFile.safeConvert<long>(data);
+                        validValue = value.has_value();
+                        if (validValue)
+                            influxTLS = value.value() != 0;
+                    }
+                        break;
+                    case ConfigItem::InfluxHost:
+                        influxHost = ConfigFile::parseText(data, [](char c) {
+                            return ConfigFile::isalnum(c) || c == '.';
+                        });
+                        validValue = influxHost.has_value();
+                        break;
+                    case ConfigItem::InfluxPort:
+                        influxPort = configFile.safeConvert<long>(data);
+                        validValue = influxPort.has_value() && influxPort.value() > 0;
+                        break;
+                    case ConfigItem::InfluxDb:
+                        influxDb = ConfigFile::parseText(data, [](char c) {
+                            return ConfigFile::isalnum(c) || c == '_';
+                        });
+                        validValue = influxDb.has_value();
+                        break;
                     default:
                         break;
                 }
@@ -238,16 +309,31 @@ int main(int argc, char **argv) {
                     dataFilePath.append(dataPath.value());
                 }
                 std::ranges::for_each(std::filesystem::directory_iterator{dataFilePath},
-                                      [dataPrefix](const auto &dir_entry) {
+                                      [&](const auto &dir_entry) {
                                           EcoBeeDataFile ecoBeeData{};
+                                          InfluxPush influxPush(influxHost.value(), influxTLS, influxPort.value(), influxDb.value());
                                           if (dir_entry.is_regular_file() &&
                                               dir_entry.path().filename().string().rfind(dataPrefix.value(), 0) == 0) {
                                               ecoBeeData.processDataFile(dir_entry);
                                               for (const auto &line : ecoBeeData) {
-                                                  std::cout << ecoBeeData.getData(EcoBeeDataFile::DataIndex::Date, line).value() << 'T'
-                                                            << ecoBeeData.getData(EcoBeeDataFile::DataIndex::Time, line).value() << " EST "
-                                                            << ecoBeeData.getData(EcoBeeDataFile::DataIndex::CurrentTemp, line).value() << '\n';
+                                                  influxPush.newMeasurements();
+
+                                                  std::cout << ecoBeeData.getData(EcoBeeDataFile::DataIndex::Date, line).value()
+                                                            << ' '
+                                                            << ecoBeeData.getData(EcoBeeDataFile::DataIndex::Time, line).value()
+                                                            << '\r';
+                                                  std::cout.flush();
+                                                  influxPush.setMeasurementEpoch(ecoBeeData.getData(EcoBeeDataFile::DataIndex::Date, line).value(),
+                                                                                 ecoBeeData.getData(EcoBeeDataFile::DataIndex::Time, line).value(),
+                                                                                 "-0500");
+                                                  for (const auto dataIdx : reportedData) {
+                                                      influxPush.addMeasurement("Home ",ecoBeeData.getHeader(dataIdx),
+                                                                                ecoBeeData.getData(dataIdx, line));
+                                                  }
+
+                                                  influxPush.pushData();
                                               }
+                                              std::cout << '\n';
                                           }
                                       });
             }
