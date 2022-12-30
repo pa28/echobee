@@ -233,6 +233,7 @@ int main(int argc, char **argv) {
                      {"influxHost", ConfigItem::InfluxHost},
                      {"influxPort", ConfigItem::InfluxPort},
                      {"influxDb", ConfigItem::InfluxDb},
+                     {"deleteProcessed", ConfigItem::DeleteProcessed},
              }};
 
     std::optional<std::filesystem::path> dataPath{};
@@ -267,6 +268,10 @@ int main(int argc, char **argv) {
                         influxTLS = ConfigFile::parseBoolean(data);
                         validValue = influxTLS.has_value();
                         break;
+                    case ConfigItem::DeleteProcessed:
+                        deleteProcessed = ConfigFile::parseBoolean(data);
+                        validValue = deleteProcessed.has_value();
+                        break;
                     case ConfigItem::InfluxHost:
                         influxHost = ConfigFile::parseText(data, [](char c) {
                             return ConfigFile::isalnum(c) || c == '.';
@@ -297,7 +302,7 @@ int main(int argc, char **argv) {
                 std::ranges::for_each(std::filesystem::directory_iterator{dataPath.value()},
                                       [&](const auto &dir_entry) {
                                           EcoBeeDataFile ecoBeeData{};
-                                          InfluxPush influxPush(influxHost.value(), influxTLS, influxPort.value(), influxDb.value());
+                                          InfluxPush influxPush(influxHost.value(), influxTLS.value(), influxPort.value(), influxDb.value());
                                           if (dir_entry.is_regular_file() &&
                                               dir_entry.path().filename().string().rfind(dataPrefix.value(), 0) == 0) {
                                               ecoBeeData.processDataFile(dir_entry);
@@ -320,6 +325,13 @@ int main(int argc, char **argv) {
                                                   influxPush.pushData();
                                               }
                                               std::cout << '\n';
+                                              if (deleteProcessed.has_value() && deleteProcessed.value()) {
+                                                  std::error_code ec;
+                                                  auto res = std::filesystem::remove(dir_entry, ec);
+                                                  if (!res) {
+                                                      std::cerr << ec << '\n';
+                                                  }
+                                              }
                                           }
                                       });
             }
