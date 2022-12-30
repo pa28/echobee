@@ -196,19 +196,11 @@ bool EcoBeeDataFile::processData(const string &line) {
 
 int main(int argc, char **argv) {
     static constexpr std::string_view ConfigOption = "--config";
-    bool influxTLS{false};
+    std::optional<bool> influxTLS{false};
+    std::optional<bool> deleteProcessed{false};
     std::optional<std::string> influxHost{"influx"};
     std::optional<std::string> influxDb{"ecobee"};
     std::optional<long> influxPort{8086};
-
-    enum class ConfigItem {
-        DataPrefix,
-        DataPath,
-        InfluxTLS,
-        InfluxHost,
-        InfluxPort,
-        InfluxDb,
-    };
 
     std::array<EcoBeeDataFile::DataIndex,10> reportedData = {
             EcoBeeDataFile::DataIndex::CurrentTemp,
@@ -223,6 +215,16 @@ int main(int argc, char **argv) {
             EcoBeeDataFile::DataIndex::HeatSetTemp,
     };
 
+    enum class ConfigItem {
+        DataPrefix,
+        DataPath,
+        InfluxTLS,
+        InfluxHost,
+        InfluxPort,
+        InfluxDb,
+        DeleteProcessed,
+    };
+
     std::vector<ConfigFile::Spec> ConfigSpec
             {{
                      {"dataPath", ConfigItem::DataPath},
@@ -233,7 +235,7 @@ int main(int argc, char **argv) {
                      {"influxDb", ConfigItem::InfluxDb},
              }};
 
-    std::optional<std::string> dataPath{};
+    std::optional<std::filesystem::path> dataPath{};
     std::optional<std::string> dataPrefix{};
 
     try {
@@ -252,9 +254,7 @@ int main(int argc, char **argv) {
                 bool validValue{false};
                 switch (static_cast<ConfigItem>(idx)) {
                     case ConfigItem::DataPath:
-                        dataPath = ConfigFile::parseText(data, [](char c) {
-                            return ConfigFile::isNameChar(c) || c == '/';
-                        });
+                        dataPath = ConfigFile::parseFilesystemPath(data);
                         validValue = dataPath.has_value();
                         break;
                     case ConfigItem::DataPrefix:
@@ -263,12 +263,9 @@ int main(int argc, char **argv) {
                         });
                         validValue = dataPath.has_value();
                         break;
-                    case ConfigItem::InfluxTLS: {
-                        std::optional<long> value = configFile.safeConvert<long>(data);
-                        validValue = value.has_value();
-                        if (validValue)
-                            influxTLS = value.value() != 0;
-                    }
+                    case ConfigItem::InfluxTLS:
+                        influxTLS = ConfigFile::parseBoolean(data);
+                        validValue = influxTLS.has_value();
                         break;
                     case ConfigItem::InfluxHost:
                         influxHost = ConfigFile::parseText(data, [](char c) {
@@ -296,19 +293,8 @@ int main(int argc, char **argv) {
             });
             configFile.close();
 
-            if (dataPath.has_value() && dataPrefix.has_value()) {
-                filesystem::path dataFilePath;
-                if (dataPath.value()[0] == '~') {
-                    struct passwd *pw = getpwuid(geteuid());
-                    dataFilePath.append(pw->pw_dir);
-                    if (auto n = dataPath->find_first_of('/');
-                            n != string::npos && n < dataPath->length()) {
-                        dataFilePath.append(dataPath->substr(n + 1));
-                    }
-                } else {
-                    dataFilePath.append(dataPath.value());
-                }
-                std::ranges::for_each(std::filesystem::directory_iterator{dataFilePath},
+            if (validFile && dataPath.has_value() && dataPrefix.has_value()) {
+                std::ranges::for_each(std::filesystem::directory_iterator{dataPath.value()},
                                       [&](const auto &dir_entry) {
                                           EcoBeeDataFile ecoBeeData{};
                                           InfluxPush influxPush(influxHost.value(), influxTLS, influxPort.value(), influxDb.value());

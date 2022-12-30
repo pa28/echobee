@@ -7,6 +7,10 @@
 
 #pragma once
 
+#include <unistd.h>
+#include <sys/types.h>
+#include <pwd.h>
+#include <algorithm>
 #include <filesystem>
 #include <fstream>
 #include <functional>
@@ -112,6 +116,55 @@ public:
             }
         }
         return result;
+    }
+
+    /**
+     * @brief Parse a boolean value which may be one of "0" "false" "no" "1" "true" "yes" case insensitive.
+     * @param stringView the string to parse
+     * @return true, false, or std::nullopt
+     */
+    static std::optional<bool> parseBoolean(const std::string_view &stringView) {
+        if (stringView == "0")
+            return false;
+        if (stringView == "1")
+            return true;
+
+        std::string upperCase{stringView};
+        std::transform(upperCase.begin(), upperCase.end(), upperCase.begin(),
+                       [](unsigned char c) { return std::toupper(c); });
+
+        if (upperCase == "NO" || upperCase == "FALSE")
+            return false;
+        if (upperCase == "YES" || upperCase == "TRUE")
+            return true;
+
+        return std::nullopt;
+    }
+
+    /**
+     * @brief Parse a std::string_view to return a std::filesystem::path or std::nullopt on failure.
+     * @param stringView A string view containing the desired filesystem path.
+     * @return a std::optional with a filesystem::path or nullopt.
+     */
+    static std::optional<std::filesystem::path> parseFilesystemPath(const std::string_view &stringView) {
+        auto pathString = ConfigFile::parseText(stringView, [](char c) {
+            return ConfigFile::isNameChar(c) || c == '/';
+        });
+        if (pathString.has_value()) {
+            std::filesystem::path dataFilePath;
+            if (pathString.value()[0] == '~') {
+                struct passwd *pw = getpwuid(geteuid());
+                dataFilePath.append(pw->pw_dir);
+                if (auto n = pathString->find_first_of('/');
+                        n != std::string::npos && n < pathString->length()) {
+                    dataFilePath.append(pathString->substr(n + 1));
+                }
+            } else {
+                dataFilePath.append(pathString.value());
+            }
+            return dataFilePath;
+        }
+        return std::nullopt;
     }
 
 };
