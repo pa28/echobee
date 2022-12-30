@@ -239,15 +239,27 @@ int main(int argc, char **argv) {
     std::optional<std::string> dataPrefix{};
 
     try {
-        xdg::Environment &environment{xdg::Environment::getEnvironment(true)};
-        filesystem::path configFilePath = environment.appResourcesAppend("config.txt");
+        xdg::Environment &environment{xdg::Environment::getEnvironment(false)};
 
         InputParser inputParser{argc, argv};
 
-        if (inputParser.cmdOptionExists(ConfigOption))
-            configFilePath = std::filesystem::path{inputParser.getCmdOption(ConfigOption)};
+        xdg::XDGFilePaths::XDG_Path_Set configPathSet{};
 
-        ConfigFile configFile{configFilePath};
+        if (inputParser.cmdOptionExists(ConfigOption))
+            configPathSet.emplace_back(inputParser.getCmdOption(ConfigOption));
+        else
+            configPathSet = environment.get_configuration_paths("config.txt");
+
+        auto fileItr = xdg::Environment::firstExistingFile(configPathSet);
+        if (!fileItr) {
+            std::cerr << "None of the specified files exists and is a regular file:\n";
+            for (const auto &filePath : configPathSet) {
+                std::cerr << '\t' << filePath.string() << '\n';
+            }
+            return 1;
+        }
+
+        ConfigFile configFile{fileItr.value()};
         if (auto status = configFile.open(); status == ConfigFile::OK) {
             bool validFile{true};
             configFile.process(ConfigSpec, [&](std::size_t idx, const std::string_view &data) {
