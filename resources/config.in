@@ -7,11 +7,13 @@ dataPrefix report-421866388280
 # InfluxDB parameters
 #
 # To use https set this to 1
-influxTLS 0
+AinfluxTLS No
 # The database server host name, assumes influx is an alias for the database server.
 influxHost pidp11
 # The database connection port
 influxPort 8086
 # The database name to store measurements.
 influxDb ecobee
+# Delete files once processed.
+deleteProcessed Yes
 
