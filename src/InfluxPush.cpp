@@ -19,7 +19,6 @@ bool InfluxPush::pushData() {
     auto postData = measurements.str();
     
     if (!postData.empty())
-#if 1
         try {
             cURLpp::Cleanup cleaner;
             cURLpp::Easy request;
@@ -41,12 +40,6 @@ bool InfluxPush::pushData() {
             std::cerr << e.what() << '\n';
             return false;
         }
-#else
-    {
-        std::cerr << buildUrl.str() << '\n';
-        std::cerr << postData << "\n\n";
-    }
-#endif
     return true;
 }
 
