@@ -57,6 +57,12 @@ public:
         Sensor3Temp [[maybe_unused]],
         Sensor3Motion [[maybe_unused]],
     };
+
+    struct StateDataItem {
+        EcoBeeDataFile::DataIndex dataIndex;
+        bool state;
+    };
+
 private:
     std::array<char, 3> footPrint{'\357', '\273', '\277'};  ///< Not really sure what this is, let's call it a footprint.
     bool fileGood{true};    ///< True if the file passes parsing.
@@ -75,6 +81,9 @@ public:
     bool processHeader(const std::string& line);
 
     bool processData(const std::string& line);
+
+    void processTimeState(InfluxPush &influxPush, EcoBeeDataFile::StateDataItem &stateDataItem,
+                          const DataLine &dataLine, const std::string &prefix) const;
 
     [[maybe_unused]] [[nodiscard]] size_t sensorCount() const {
         if (fileGood) {
@@ -193,6 +202,41 @@ bool EcoBeeDataFile::processData(const string &line) {
     return false;
 }
 
+void EcoBeeDataFile::processTimeState(InfluxPush &influxPush, EcoBeeDataFile::StateDataItem &stateDataItem,
+                                      const DataLine &dataLine, const std::string &prefix) const {
+    const static std::optional<std::string>True{"true"};
+    const static std::optional<std::string>False{"false"};
+
+    try {
+        auto timeStamp = influxPush.getMeasurementEpoch();
+        if (auto valueString = getData(stateDataItem.dataIndex, dataLine); valueString) {
+            if (auto value = ConfigFile::safeConvert<unsigned long>(valueString.value()); value) {
+                if (value.value() == 0 || value.value() == MaximumTimeValue) {
+                    if (value.value() == 0 && stateDataItem.state) {
+                        stateDataItem.state = false;
+                    } else if (value.value() == MaximumTimeValue && !stateDataItem.state) {
+                        stateDataItem.state = true;
+                    }
+                } else {
+                    if (stateDataItem.state) {
+                        timeStamp += value.value() * 1000000000;
+                        stateDataItem.state = false;
+                    } else {
+                        timeStamp += (MaximumTimeValue - value.value()) * 1000000000;
+                        stateDataItem.state = true;
+                    }
+                }
+            }
+            if (auto headerString = getHeader(stateDataItem.dataIndex); headerString.has_value())
+                influxPush.addMeasurement(prefix, headerString,
+                                          (stateDataItem.state ? True : False), timeStamp);
+        }
+    } catch (exception& e) {
+        std::cerr << e.what();
+        throw e;
+    }
+}
+
 int main(int argc, char **argv) {
     static constexpr std::string_view ConfigOption = "--config";
     std::optional<bool> influxTLS{false};
@@ -213,6 +257,12 @@ int main(int argc, char **argv) {
             EcoBeeDataFile::DataIndex::CoolSetTemp,
             EcoBeeDataFile::DataIndex::HeatSetTemp,
     };
+
+    std::array<EcoBeeDataFile::StateDataItem,3> timeStateData = {{
+                                                     {EcoBeeDataFile::DataIndex::FanSec, false },
+                                                     {EcoBeeDataFile::DataIndex::HeatStage1Sec, false },
+                                                     {EcoBeeDataFile::DataIndex::CoolStage1Sec, false },
+                                             }};
 
     enum class ConfigItem {
         DataPrefix,
@@ -331,6 +381,11 @@ int main(int argc, char **argv) {
                                                   for (const auto dataIdx : reportedData) {
                                                       influxPush.addMeasurement("Home ",ecoBeeData.getHeader(dataIdx),
                                                                                 ecoBeeData.getData(dataIdx, line));
+                                                  }
+
+                                                  for (auto &stateItem : timeStateData) {
+                                                      ecoBeeData.processTimeState(influxPush, stateItem, line,
+                                                                                  "Home ");
                                                   }
 
                                                   influxPush.pushData();
