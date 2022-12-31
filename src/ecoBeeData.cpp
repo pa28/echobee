@@ -340,7 +340,7 @@ int main(int argc, char **argv) {
                         validValue = influxHost.has_value();
                         break;
                     case ConfigItem::InfluxPort:
-                        influxPort = configFile.safeConvert<long>(data);
+                        influxPort = ConfigFile::safeConvert<long>(data);
                         validValue = influxPort.has_value() && influxPort.value() > 0;
                         break;
                     case ConfigItem::InfluxDb:
