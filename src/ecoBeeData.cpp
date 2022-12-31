@@ -41,7 +41,7 @@ public:
         OutdoorTemp [[maybe_unused]],
         WindSpeed [[maybe_unused]],
         CoolStage1Sec [[maybe_unused]],
-        HeadStage1Sec [[maybe_unused]],
+        HeatStage1Sec [[maybe_unused]],
         FanSec [[maybe_unused]],
         DMOffset [[maybe_unused]],
         ThermostatTemp [[maybe_unused]],
