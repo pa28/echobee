@@ -85,6 +85,9 @@ public:
     bool processTimeState(InfluxPush &influxPush, EcoBeeDataFile::StateDataItem &stateDataItem,
                           const DataLine &dataLine, const std::string &prefix) const;
 
+    void processDMOffset(InfluxPush &influxPush, const EcoBeeDataFile::DataLine &dataLine,
+                                          const std::string &prefix) const;
+
     [[maybe_unused]] [[nodiscard]] size_t sensorCount() const {
         if (fileGood) {
             return (header.size() - Sensor0Temp) / 2;
@@ -202,7 +205,21 @@ bool EcoBeeDataFile::processData(const string &line) {
     return false;
 }
 
-void EcoBeeDataFile::processTimeState(InfluxPush &influxPush, EcoBeeDataFile::StateDataItem &stateDataItem,
+void EcoBeeDataFile::processDMOffset(InfluxPush &influxPush, const EcoBeeDataFile::DataLine &dataLine,
+                                     const std::string &prefix) const {
+    if (auto name = getHeader(DataIndex::DMOffset); name.has_value()) {
+        if (auto dmOffset = getData(DataIndex::DMOffset, dataLine);
+                dmOffset.has_value() && !dmOffset.value().empty()) {
+            influxPush.addMeasurement(prefix, name, dmOffset);
+        } else {
+            influxPush.addMeasurement(prefix, name, std::optional<std::string>("0.0"));
+        }
+    } else {
+        std::cerr << "No name\n";
+    }
+}
+
+bool EcoBeeDataFile::processTimeState(InfluxPush &influxPush, EcoBeeDataFile::StateDataItem &stateDataItem,
                                       const DataLine &dataLine, const std::string &prefix) const {
     const static std::optional<std::string>True{"true"};
     const static std::optional<std::string>False{"false"};
