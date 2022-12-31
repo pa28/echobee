@@ -82,7 +82,7 @@ public:
 
     bool processData(const std::string& line);
 
-    void processTimeState(InfluxPush &influxPush, EcoBeeDataFile::StateDataItem &stateDataItem,
+    bool processTimeState(InfluxPush &influxPush, EcoBeeDataFile::StateDataItem &stateDataItem,
                           const DataLine &dataLine, const std::string &prefix) const;
 
     [[maybe_unused]] [[nodiscard]] size_t sensorCount() const {
@@ -207,9 +207,11 @@ void EcoBeeDataFile::processTimeState(InfluxPush &influxPush, EcoBeeDataFile::St
     const static std::optional<std::string>True{"true"};
     const static std::optional<std::string>False{"false"};
 
+    bool dataWritten{false};
     try {
         auto timeStamp = influxPush.getMeasurementEpoch();
-        if (auto valueString = getData(stateDataItem.dataIndex, dataLine); valueString) {
+        if (auto valueString = getData(stateDataItem.dataIndex, dataLine);
+                valueString.has_value() && !valueString.value().empty()) {
             if (auto value = ConfigFile::safeConvert<unsigned long>(valueString.value()); value) {
                 if (value.value() == 0 || value.value() == MaximumTimeValue) {
                     if (value.value() == 0 && stateDataItem.state) {
@@ -227,10 +229,14 @@ void EcoBeeDataFile::processTimeState(InfluxPush &influxPush, EcoBeeDataFile::St
                     }
                 }
             }
-            if (auto headerString = getHeader(stateDataItem.dataIndex); headerString.has_value())
+            if (auto headerString = getHeader(stateDataItem.dataIndex); headerString.has_value()) {
                 influxPush.addMeasurement(prefix, headerString,
                                           (stateDataItem.state ? True : False), timeStamp);
+                dataWritten = true;
+            }
         }
+
+        return dataWritten;
     } catch (exception& e) {
         std::cerr << e.what();
         throw e;
@@ -375,20 +381,46 @@ int main(int argc, char **argv) {
                                                             << ecoBeeData.getData(EcoBeeDataFile::DataIndex::Time, line).value()
                                                             << '\r';
                                                   std::cout.flush();
+
+                                                  /**
+                                                   * Set the measurement epoch.
+                                                   */
                                                   influxPush.setMeasurementEpoch(ecoBeeData.getData(EcoBeeDataFile::DataIndex::Date, line).value(),
                                                                                  ecoBeeData.getData(EcoBeeDataFile::DataIndex::Time, line).value(),
                                                                                  "-0500");
+                                                  /**
+                                                   * dataWritten will be used to detect when a other values are present.
+                                                   * This will indicate that a default 0.0 value for DM Offset and the outside
+                                                   * temperature should be written as well.
+                                                   */
+                                                  bool dataWritten = false;
+
+                                                  /**
+                                                   * Write the reported values list.
+                                                   */
                                                   for (const auto dataIdx : reportedData) {
-                                                      influxPush.addMeasurement("Home ",ecoBeeData.getHeader(dataIdx),
+                                                      dataWritten |= influxPush.addMeasurement(prefix,ecoBeeData.getHeader(dataIdx),
                                                                                 ecoBeeData.getData(dataIdx, line));
                                                   }
 
+                                                  /**
+                                                   * Write the time state data (heating, cooling, fan running)
+                                                   */
                                                   for (auto &stateItem : timeStateData) {
-                                                      ecoBeeData.processTimeState(influxPush, stateItem, line,
-                                                                                  "Home ");
+                                                      dataWritten |= ecoBeeData.processTimeState(influxPush, stateItem, line,
+                                                                                  prefix);
                                                   }
 
-                                                  influxPush.pushData();
+                                                  /**
+                                                   * If data has been written also write the DM Offset, writing a 0.0 value if none present,
+                                                   * and the outside temperature. Then push all data to the server.
+                                                   */
+                                                  if (dataWritten) {
+                                                      ecoBeeData.processDMOffset(influxPush, line, prefix);
+                                                      influxPush.addMeasurement(prefix, ecoBeeData.getHeader(EcoBeeDataFile::DataIndex::OutdoorTemp),
+                                                                                ecoBeeData.getData(EcoBeeDataFile::DataIndex::OutdoorTemp, line));
+                                                      influxPush.pushData();
+                                                  }
                                               }
                                               std::cout << '\n';
                                               if (deleteProcessed.has_value() && deleteProcessed.value()) {
