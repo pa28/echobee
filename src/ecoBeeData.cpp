@@ -23,7 +23,7 @@ class EcoBeeDataFile {
 public:
     using DataLine = std::vector<std::string>;
     using DataFile = std::vector<DataLine>;
-
+    constexpr static unsigned long MaximumTimeValue = 300;
     /**
      * Indexes into the header and data vectors.
      */
