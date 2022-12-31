@@ -8,7 +8,12 @@ set(CMAKE_CXX_STANDARD 23)
 
 set(CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/CMakeModules" "${CMAKE_MODULE_PATH}")
 find_package(CURLPP REQUIRED)
-include_directories(${CURLPP_INCLUDE_DIR} util util/Config util/Influx util/XDG)
+include_directories(${CURLPP_INCLUDE_DIR}
+        util
+        util/Config
+        util/Influx
+        util/XDG
+        util/File)
 
 set(DAEMON_USER "daemon")
 set(DAEMON_GROUP "daemon")
@@ -19,7 +24,8 @@ add_compile_options(-Wall -Wextra -pedantic -Werror -Wconversion)
 
 add_executable(ecoBeeData
         src/ecoBeeData.cpp
-        util/Config/ConfigFile.cpp util/XDG/XDGFilePaths.cpp util/Influx/InfluxPush.cpp util/Influx/InfluxPush.h)
+        util/Config/ConfigFile.cpp util/XDG/XDGFilePaths.cpp util/Influx/InfluxPush.cpp util/Influx/InfluxPush.h
+        util/File/Permissions.cpp)
 
 target_link_libraries(ecoBeeData
         stdc++fs
