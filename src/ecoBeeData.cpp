@@ -381,6 +381,7 @@ int main(int argc, char **argv) {
             });
             configFile.close();
 
+            const std::string prefix{"Home "};
             if (validFile && dataPath.has_value() && dataPrefix.has_value()) {
                 std::ranges::for_each(std::filesystem::directory_iterator{dataPath.value()},
                                       [&](const auto &dir_entry) {
