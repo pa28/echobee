@@ -268,10 +268,9 @@ int main(int argc, char **argv) {
     std::optional<std::string> influxDb{"ecobee"};
     std::optional<long> influxPort{8086};
 
-    std::array<EcoBeeDataFile::DataIndex,10> reportedData = {
+    std::array<EcoBeeDataFile::DataIndex,9> reportedData = {
             EcoBeeDataFile::DataIndex::CurrentTemp,
             EcoBeeDataFile::DataIndex::CurrentHumidity,
-            EcoBeeDataFile::DataIndex::OutdoorTemp,
             EcoBeeDataFile::DataIndex::Sensor0Temp,
             EcoBeeDataFile::DataIndex::Sensor1Temp,
             EcoBeeDataFile::DataIndex::Sensor2Temp,
