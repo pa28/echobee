@@ -393,6 +393,9 @@ int main(int argc, char **argv) {
                                               for (const auto &line : ecoBeeData) {
                                                   influxPush.newMeasurements();
 
+                                                  /**
+                                                   * Output a process indication.
+                                                   */
                                                   std::cout << ecoBeeData.getData(EcoBeeDataFile::DataIndex::Date, line).value()
                                                             << ' '
                                                             << ecoBeeData.getData(EcoBeeDataFile::DataIndex::Time, line).value()
@@ -440,6 +443,10 @@ int main(int argc, char **argv) {
                                                   }
                                               }
                                               std::cout << '\n';
+
+                                              /**
+                                               * Action the delete processed files flag if set.
+                                               */
                                               if (deleteProcessed.has_value() && deleteProcessed.value()) {
                                                   std::error_code ec;
                                                   auto res = std::filesystem::remove(dir_entry, ec);
