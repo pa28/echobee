@@ -13,7 +13,7 @@ influxHost pidp11
 # The database connection port
 influxPort 8086
 # The database name to store measurements.
-influxDb ecobee
+influxDb ecoBee
 # Delete files once processed.
 deleteProcessed Yes
 

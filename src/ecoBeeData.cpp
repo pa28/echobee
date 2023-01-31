@@ -17,7 +17,7 @@ using namespace std;
 
 /**
  * @class EcoBeDataFile
- * @brief Abstract the CSV file made available by ecobee
+ * @brief Abstract the CSV file made available by ecoBee
  */
 class EcoBeeDataFile {
 public:
@@ -265,7 +265,7 @@ int main(int argc, char **argv) {
     std::optional<bool> influxTLS{false};
     std::optional<bool> deleteProcessed{false};
     std::optional<std::string> influxHost{"influx"};
-    std::optional<std::string> influxDb{"ecobee"};
+    std::optional<std::string> influxDb{"ecoBee"};
     std::optional<long> influxPort{8086};
 
     std::array<EcoBeeDataFile::DataIndex,9> reportedData = {

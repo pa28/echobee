@@ -3,6 +3,10 @@ cmake_minimum_required(VERSION 3.22)
 project(ecoBeeData VERSION 0.3.1.0)
 set(PACKAGE_CONTACT "Richard Buckley <richard.buckley@ieee.org>")
 include(GNUInstallDirs)
+include(FetchContent)
+
+FetchContent_Declare(json URL https://github.com/nlohmann/json/releases/download/v3.11.2/json.tar.xz)
+FetchContent_MakeAvailable(json)
 
 set(CMAKE_CXX_STANDARD 23)
 
@@ -10,15 +14,20 @@ set(CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/CMakeModules" "${CMAKE_MODULE
 find_package(CURLPP REQUIRED)
 include_directories(${CURLPP_INCLUDE_DIR}
         util
+        fmt/include
         util/Config
         util/Influx
         util/XDG
-        util/File)
+        util/File
+        util/ecoBeeApi
+        cmake-build-debug/_deps/json-src/include)
 
 set(DAEMON_USER "daemon")
 set(DAEMON_GROUP "daemon")
 set(MONITOR_NAME "SYS_MONITOR")
 set(ECO_BEE_CONFIG_DIR "${CMAKE_INSTALL_DATA}")
+
+list(APPEND LIB_FMT fmt/src/format.cc fmt/src/os.cc)
 
 add_compile_options(-Wall -Wextra -pedantic -Werror -Wconversion)
 
@@ -28,6 +37,17 @@ add_executable(ecoBeeData
         util/File/Permissions.cpp)
 
 target_link_libraries(ecoBeeData
+        stdc++fs
+        ${CURLPP_LIBRARIES}
+        )
+
+add_executable(ecoBeeApi
+        src/ecoBeeApi.cpp
+        util/Config/ConfigFile.cpp util/XDG/XDGFilePaths.cpp util/Influx/InfluxPush.h
+        util/File/Permissions.cpp util/ecoBeeApi/Api.cpp util/ecoBeeApi/Api.h
+        ${LIB_FMT})
+
+target_link_libraries(ecoBeeApi
         stdc++fs
         ${CURLPP_LIBRARIES}
         )
