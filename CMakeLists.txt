@@ -19,7 +19,7 @@ include_directories(${CURLPP_INCLUDE_DIR}
         util/Influx
         util/XDG
         util/File
-        util/ecoBeeApi
+        src/ecoBeeApi
         cmake-build-debug/_deps/json-src/include)
 
 set(DAEMON_USER "daemon")
@@ -44,7 +44,7 @@ target_link_libraries(ecoBeeData
 add_executable(ecoBeeApi
         src/ecoBeeApi.cpp
         util/Config/ConfigFile.cpp util/XDG/XDGFilePaths.cpp util/Influx/InfluxPush.h
-        util/File/Permissions.cpp util/ecoBeeApi/Api.cpp util/ecoBeeApi/Api.h
+        util/File/Permissions.cpp src/ecoBeeApi/Api.cpp src/ecoBeeApi/Api.h
         ${LIB_FMT})
 
 target_link_libraries(ecoBeeApi
