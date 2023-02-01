@@ -26,6 +26,7 @@
 #include <curlpp/Infos.hpp>
 #include <nlohmann/json.hpp>
 #include <exception>
+#include <utility>
 #include <fmt/format.h>
 
 namespace ecoBee {
@@ -76,6 +77,22 @@ namespace ecoBee {
         AccessToken mAccessToken{};
     };
 
+    static constexpr std::string_view OperationTimeParam = "auxHeat1,compCool1,fan";
+    static constexpr std::string_view OperationStateParam = "HVACmode,zoneHVACmode,zoneClimate";
+    struct Sensor {
+        enum Type { unknown, airPressure, temperature, occupancy, humidity };
+        std::string id{}, name{}, usage{};
+        Type type{unknown};
+
+        Sensor(std::string id, std::string name, const std::string& sType, std::string usage)
+            : id(std::move(id)), name(std::move(name)), usage(std::move(usage)) {
+            if (sType == "airPressure") type = airPressure;
+            else if (sType == "temperature") type = temperature;
+            else if (sType == "occupancy") type = occupancy;
+            else if (sType == "humidity") type = humidity;
+        }
+    };
+
     /**
      * @class Api
      */
@@ -120,6 +137,7 @@ namespace ecoBee {
 
     [[nodiscard]] std::tuple<std::string,std::string,std::string,std::string,std::string> runtimeIntervals(const std::string& lastTime);
 
+    void processRuntimeData(const nlohmann::json& data);
 } // ecoBee
 
 #endif //ECOBEEDATA_API_H

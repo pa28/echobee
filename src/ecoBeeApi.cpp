@@ -14,6 +14,10 @@ using namespace ecoBee;
 using json = nlohmann::json;
 
 static constexpr std::array<std::string_view,12> DataColumns = {
+    "hvacMode",
+    "zoneHvacMode",
+    "zoneClimate",
+    "zoneAveTemp",
     "auxHeat1",
     "compCool1",
     "fan",
@@ -22,10 +26,6 @@ static constexpr std::array<std::string_view,12> DataColumns = {
     "outdoorTemp",
     "outdoorHumidity",
     "wind",
-    "hvacMode",
-    "zoneHvacMode",
-    "zoneClimate",
-    "zoneAveTemp"
 };
 
 auto firstValidFile(const std::vector<std::filesystem::path>& paths) {
@@ -63,6 +63,11 @@ int main(int argc, char **argv) {
     ifs.open(thermostatPath);
     auto thermostatJson = json::parse(ifs);
     ifs.close();
+
+    ifs.open(dataPath);
+    auto runtimeData = json::parse(ifs);
+    ifs.close();
+    processRuntimeData(runtimeData);
 
     std::string ecoBeeTokenURL{"https://api.ecobee.com/token"};
     std::string apiKey = appAuth["API_Key"];
