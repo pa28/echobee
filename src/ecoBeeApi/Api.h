@@ -27,7 +27,6 @@
 #include <nlohmann/json.hpp>
 #include <exception>
 #include <utility>
-#include <fmt/format.h>
 #include <ConfigFile.h>
 #include "InfluxPush.h"
 
@@ -63,7 +62,9 @@ namespace ecoBee {
         else if (code == 14)
             return ApiStatus::TokenExpired;
         else {
-            throw ApiError(fmt::format("Code: {}, Message: {}", code, message));
+            std::stringstream ss{};
+            ss << "Code: " << code << ", Message: " << message;
+            throw ApiError(ss.str());
         }
     }
 

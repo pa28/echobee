@@ -22,7 +22,6 @@
 #include <utility>
 #include <date/tz.h>
 #include "Api.h"
-#include "fmt/format.h"
 #include "nlohmann/json.hpp"
 #include "InfluxPush.h"
 
@@ -35,17 +34,22 @@ namespace ecoBee {
         request.setOpt(new cURLpp::Options::Url(url));
         request.setOpt(new cURLpp::Options::Verbose(false));
 
+        std::stringstream ss{};
         std::list<std::string> header;
         header.emplace_back("content-type: text/json;charset=UTF-8");
-        auto authHeader = fmt::format("Authorization: Bearer {}", token);
+        ss << "Authorization: Bearer " << token;
+        auto authHeader = ss.str();
+        ss.str("");
         header.emplace_back(authHeader);
         request.setOpt(new cURLpp::Options::HttpHeader(header));
 
         request.setOpt(new curlpp::options::WriteStream(&response));
 
         request.perform();
-        if (auto code = curlpp::infos::ResponseCode::get(request); code != 200 && code != 500)
-            throw HtmlError(fmt::format("HTML error code: {}", code));
+        if (auto code = curlpp::infos::ResponseCode::get(request); code != 200 && code != 500) {
+            ss << "HTML error code: {}" << code;
+            throw HtmlError(ss.str());
+        }
 
         data = nlohmann::json::parse(response);
         return apiStatus(data["status"]["code"], data["status"]["message"]);
@@ -55,6 +59,7 @@ namespace ecoBee {
         std::stringstream response{};
         cURLpp::Cleanup cleaner;
         cURLpp::Easy request;
+        std::stringstream ss{};
 
         auto url = R"(https://api.ecobee.com/1/thermostat?format=json&body={"selection":{"selectionType":"registered",)"
                    R"(selectionMatch":"","includeRuntime":true}})";
@@ -64,22 +69,21 @@ namespace ecoBee {
 
         std::list<std::string> header;
         header.emplace_back("content-type: text/json");
-        auto authHeader = fmt::format("Authorization: Bearer {}", token);
+        ss << "Authorization: Bearer {}" << token;
+        auto authHeader = ss.str();
         header.emplace_back(authHeader);
         request.setOpt(new cURLpp::Options::HttpHeader(header));
 
         request.setOpt(new curlpp::options::WriteStream(&response));
 
         request.perform();
-        if (auto code = curlpp::infos::ResponseCode::get(request); code != 200)
-            throw HtmlError(fmt::format("HTML error code: {}", code));
+        if (auto code = curlpp::infos::ResponseCode::get(request); code != 200) {
+            ss << "HTML error code: {}" << code;
+            throw HtmlError(ss.str());
+        }
 
         auto thermostat = nlohmann::json::parse(response);
-        if (auto status = apiStatus(thermostat["status"]["code"], thermostat["status"]["code"]); status == ApiStatus::OK) {
-            return status;
-        } else {
-            return status;
-        }
+        return apiStatus(thermostat["status"]["code"], thermostat["status"]["code"]);
     }
 
     /**
@@ -93,7 +97,9 @@ namespace ecoBee {
      */
     ApiStatus refreshAccessToken(nlohmann::json &accessToken, const std::string &url, const std::string &apiKey,
                                  const std::string &token) {
-        auto postData = fmt::format("grant_type=refresh_token&&code={}&client_id={}", token, apiKey);
+        std::stringstream ss{};
+        ss << "grant_type=refresh_token&&code=" << token << "&client_id=" << apiKey;
+        auto postData = ss.str();
         std::stringstream response{};
         cURLpp::Cleanup cleaner;
         cURLpp::Easy request;
@@ -109,8 +115,11 @@ namespace ecoBee {
         request.setOpt(new curlpp::options::WriteStream(&response));
 
         request.perform();
-        if (auto code = curlpp::infos::ResponseCode::get(request); code != 200)
-            throw HtmlError(fmt::format("HTML error code: {}", code));
+        if (auto code = curlpp::infos::ResponseCode::get(request); code != 200) {
+            ss.str("");
+            ss << "HTML error code: " << code;
+            throw HtmlError(ss.str());
+        }
 
         accessToken = nlohmann::json::parse(response);
         std::ofstream ofs("/home/richard/.config/ecoBeeApi/response.json");
@@ -140,13 +149,19 @@ namespace ecoBee {
 
         std::list<std::string> header;
         header.emplace_back("Content-Type: text/json");
-        header.emplace_back(fmt::format("Authorization: Bearer {}", token));
+
+        std::stringstream ss{};
+        ss << "Authorization: Bearer " << token;
+        header.emplace_back(ss.str());
         request.setOpt(new cURLpp::Options::HttpHeader(header));
         request.setOpt(new curlpp::options::WriteStream(&response));
 
         request.perform();
-        if (auto code = curlpp::infos::ResponseCode::get(request); code != 200 && code != 500)
-            throw HtmlError(fmt::format("HTML error code: {}", code));
+        if (auto code = curlpp::infos::ResponseCode::get(request); code != 200 && code != 500) {
+            ss.str("");
+            ss << "HTML error code: " << code;
+            throw HtmlError(ss.str());
+        }
 
         poll = nlohmann::json::parse(response);
 
@@ -181,7 +196,9 @@ namespace ecoBee {
         char buf[32];
         strftime(buf, 15, "%Y-%m-%d", &dtLast);
         std::string startTime{buf};
-        auto startInt = fmt::format("{:d}",(dtLast.tm_hour*60 + dtLast.tm_min)/5);
+        ss.str("");
+        ss << (dtLast.tm_hour*60 + dtLast.tm_min)/5;
+        auto startInt = ss.str();
 
         time_t now;
         time(&now);
@@ -189,7 +206,9 @@ namespace ecoBee {
         dtNow = gmtime(&now);
         strftime(buf, 15, "%Y-%m-%d", dtNow);
         std::string endTime{buf};
-        auto endInt = fmt::format("{:d}", (dtNow->tm_hour*60 + dtNow->tm_min)/5);
+        ss.str("");
+        ss << (dtNow->tm_hour*60 + dtNow->tm_min)/5;
+        auto endInt = ss.str();
         strftime(buf, 21, format.c_str(), dtNow);
 
         return {startTime,startInt,endTime,endInt,std::string{buf}};
@@ -357,9 +376,9 @@ namespace ecoBee {
         return workingHdr;
     }
 
-    std::string FtoC(const std::string& f) { return fmt::format("{}", (atof(f.c_str()) - 32.f)  * 5.f/9.f); }
+    std::string FtoC(const std::string& f) { return std::to_string((atof(f.c_str()) - 32.f)  * 5.f/9.f); }
 
-    std::string hectoPascals(const std::string& s) { return fmt::format("{}", (atof(s.c_str()) / 100.f)); }
+    std::string hectoPascals(const std::string& s) { return std::to_string(atof(s.c_str()) / 100.f); }
 
     void timeBasedOperation(InfluxPush &influx, const std::string& name, const std::string& data, const std::string& time,
                             int seconds, bool state);
@@ -369,7 +388,6 @@ namespace ecoBee {
         const static std::optional<std::string>True{"true"};
         const static std::optional<std::string>False{"false"};
 
-//        std::cout << row.dump(4) << '\n';
         influx.newMeasurements();
         influx.setMeasurementEpoch(date, time);
         bool dataWritten = false;

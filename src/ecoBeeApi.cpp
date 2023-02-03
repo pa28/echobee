@@ -4,7 +4,6 @@
 // https://www.normalexception.net/Code-Development/ecobee3-api
 
 #include "Api.h"
-#include <fmt/format.h>
 #include <sstream>
 #include "XDGFilePaths.h"
 #include "InputParser.h"
@@ -204,7 +203,9 @@ int main(int argc, char **argv) {
 
     if (thermostatJson["runtimeUpdate"]) {
         auto [startDate, start, endDate, end, lastData] = runtimeIntervals(thermostatJson["lastData"]);
-        auto fileName = fmt::format("{}:{}--{}:{}.json", startDate, start, endDate, end);
+        std::stringstream ss{};
+        ss << startDate << ':' << start << "--" << endDate << ':' << end;
+        auto fileName = ss.str();
         json report{};
         if (runtimeReport(report, jsonAccess["access_token"],
                           runtimeReportUrl(DataColumns, true, startDate, start, endDate, end)) == ApiStatus::OK) {

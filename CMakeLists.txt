@@ -8,13 +8,12 @@ include(FetchContent)
 FetchContent_Declare(json URL https://github.com/nlohmann/json/releases/download/v3.11.2/json.tar.xz)
 FetchContent_MakeAvailable(json)
 
-set(CMAKE_CXX_STANDARD 23)
+set(CMAKE_CXX_STANDARD 20)
 
 set(CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/CMakeModules" "${CMAKE_MODULE_PATH}")
 find_package(CURLPP REQUIRED)
 include_directories(${CURLPP_INCLUDE_DIR}
         util
-        fmt/include
         util/Config
         util/Influx
         util/XDG
@@ -28,7 +27,7 @@ set(DAEMON_GROUP "daemon")
 set(MONITOR_NAME "SYS_MONITOR")
 set(ECO_BEE_CONFIG_DIR "${CMAKE_INSTALL_DATA}")
 
-list(APPEND LIB_FMT fmt/src/format.cc fmt/src/os.cc)
+#list(APPEND LIB_FMT fmt/src/format.cc fmt/src/os.cc)
 
 add_compile_options(-Wall -Wextra -pedantic -Werror -Wconversion)
 
@@ -47,7 +46,7 @@ add_executable(ecoBeeApi
         util/Config/ConfigFile.cpp util/XDG/XDGFilePaths.cpp util/Influx/InfluxPush.h util/Influx/InfluxPush.cpp
         util/File/Permissions.cpp src/ecoBeeApi/Api.cpp src/ecoBeeApi/Api.h
         zone/src/tz.cpp
-        ${LIB_FMT})
+        )
 
 target_link_libraries(ecoBeeApi
         stdc++fs
