@@ -305,8 +305,8 @@ namespace ecoBee {
             }
 
             /**
-             * Process sensor data, only temperatures and humanities are handled in this version.
-             * Occupancy and air pressures are ignored.
+             * Process sensor data, only temperatures, humanities and pressures are handled in this version.
+             * Occupancy is ignored.
              */
             if (sensorList.size() == sensorVector.size()) {
                 for(size_t colIdx = 2; colIdx < sensorList.size(); ++colIdx) {
@@ -318,6 +318,9 @@ namespace ecoBee {
                                 break;
                             case Sensor::humidity:
                                 reportJson["humidity"][sensor->second.name] = sensorVector[colIdx];
+                                break;
+                            case Sensor::airPressure:
+                                reportJson["airPressure"][sensor->second.name] = sensorVector[colIdx];
                                 break;
                             default:
                                 break;
@@ -356,6 +359,8 @@ namespace ecoBee {
 
     std::string FtoC(const std::string& f) { return fmt::format("{}", (atof(f.c_str()) - 32.f)  * 5.f/9.f); }
 
+    std::string hectoPascals(const std::string& s) { return fmt::format("{}", (atof(s.c_str()) / 100.f)); }
+
     void timeBasedOperation(InfluxPush &influx, const std::string& name, const std::string& data, const std::string& time,
                             int seconds, bool state);
 
@@ -368,12 +373,21 @@ namespace ecoBee {
         influx.newMeasurements();
         influx.setMeasurementEpoch(date, time);
         bool dataWritten = false;
-        for (auto item : row["humidity"].items()) {
+
+        for (const auto& item : row["humidity"].items()) {
             dataWritten |= influx.addMeasurement(prefix, escapeHeader(item.key()), item.value());
         }
-        for (auto item : row["temperature"].items()) {
+
+        for (const auto& item : row["temperature"].items()) {
             dataWritten |= influx.addMeasurement(prefix, escapeHeader(item.key()), FtoC(item.value()));
         }
+
+        for (const auto& item : row["airPressure"].items()) {
+            [[maybe_unused]] auto v = item.value();
+            [[maybe_unused]] auto p = hectoPascals(v);
+            dataWritten |= influx.addMeasurement(prefix, escapeHeader(item.key()), hectoPascals(item.value()));
+        }
+
         if (row["operations"]["state"]["HVACmode"] == "heat") {
             dataWritten += influx.addMeasurement(prefix, "SetPoint", FtoC(row["operations"]["zoneHeatTemp"]));
         } else if (row["operations"]["state"]["zoneHVACmode"] == "cool") {

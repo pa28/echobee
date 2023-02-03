@@ -215,7 +215,13 @@ int main(int argc, char **argv) {
             ofs.open(dataPath);
             ofs << report.dump(4) << '\n';
             ofs.close();
-            processRuntimeData(report, influxConfig);
+            lastData = processRuntimeData(report, influxConfig);
+            if (!lastData.empty()) {
+                thermostatJson["lastData"] = lastData;
+                ofs.open(thermostatPath);
+                ofs << thermostatJson.dump(4) << '\n';
+                ofs.close();
+            }
         }
     }
 
