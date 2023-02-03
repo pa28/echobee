@@ -28,8 +28,19 @@
 #include <exception>
 #include <utility>
 #include <fmt/format.h>
+#include <ConfigFile.h>
+#include "InfluxPush.h"
 
 namespace ecoBee {
+    struct InfluxConfig {
+        std::optional<bool> influxTLS{false};
+        std::optional<bool> deleteProcessed{false};
+        std::optional<std::string> influxHost{"influx"};
+        std::optional<std::string> influxDb{"ecoBee"};
+        std::optional<long> influxPort{8086};
+    };
+
+    std::string localToGMT(const std::string& date, const std::string& time);
 
     static constexpr std::string_view DateTimeFormat = "%Y-%m-%dT%H:%M:%SZ";
     class HtmlError : public std::runtime_error {
@@ -125,10 +136,12 @@ namespace ecoBee {
         return url.str();
     }
 
+    std::string escapeHeader(const std::string& hdr);
+
     [[nodiscard]] ApiStatus statusPoll(nlohmann::json &poll, const std::string &token);
 
     [[nodiscard]] ApiStatus
-    runtimeReport(const std::string &token, const std::string &url);
+    runtimeReport(nlohmann::json &data, const std::string &token, const std::string &url);
 
     [[nodiscard]] ApiStatus refreshAccessToken(nlohmann::json& accessToken, const std::string& url, const std::string& apiKey,
                                  const std::string& token);
@@ -137,7 +150,9 @@ namespace ecoBee {
 
     [[nodiscard]] std::tuple<std::string,std::string,std::string,std::string,std::string> runtimeIntervals(const std::string& lastTime);
 
-    void processRuntimeData(const nlohmann::json& data);
+    std::string processRuntimeData(const nlohmann::json &data, const InfluxConfig &influxConfig);
+
+    void influxPush(nlohmann::json &row, InfluxPush &influx, const std::string &date, const std::string &time);
 } // ecoBee
 
 #endif //ECOBEEDATA_API_H
