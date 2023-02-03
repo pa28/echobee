@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.22)
+cmake_minimum_required(VERSION 3.18)
 
 project(ecoBeeData VERSION 0.3.1.0)
 set(PACKAGE_CONTACT "Richard Buckley <richard.buckley@ieee.org>")
@@ -20,7 +20,7 @@ include_directories(${CURLPP_INCLUDE_DIR}
         util/File
         src/ecoBeeApi
         zone/include/
-        cmake-build-debug/_deps/json-src/include)
+        cmake-build-release/_deps/json-src/include)
 
 set(DAEMON_USER "daemon")
 set(DAEMON_GROUP "daemon")
