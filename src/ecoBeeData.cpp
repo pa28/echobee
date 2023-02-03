@@ -405,9 +405,11 @@ int main(int argc, char **argv) {
                                                   /**
                                                    * Set the measurement epoch.
                                                    */
-                                                  influxPush.setMeasurementEpoch(ecoBeeData.getData(EcoBeeDataFile::DataIndex::Date, line).value(),
-                                                                                 ecoBeeData.getData(EcoBeeDataFile::DataIndex::Time, line).value(),
-                                                                                 "-0500");
+                                                  influxPush.setMeasurementEpoch(
+                                                          ecoBeeData.getData(EcoBeeDataFile::DataIndex::Date,
+                                                                             line).value(),
+                                                          ecoBeeData.getData(EcoBeeDataFile::DataIndex::Time,
+                                                                             line).value());
                                                   /**
                                                    * dataWritten will be used to detect when a other values are present.
                                                    * This will indicate that a default 0.0 value for DM Offset and the outside

@@ -126,7 +126,7 @@ int main(int argc, char **argv) {
         std::ifstream ifs{dataPath};
         auto report = json::parse(ifs);
         ifs.close();
-        processRuntimeData(report, influxConfig);
+        [[maybe_unused]] auto lastData = processRuntimeData(report, influxConfig);
         exit(0);
     }
 
@@ -151,7 +151,6 @@ int main(int argc, char **argv) {
     std::string token = jsonAccess["refresh_token"];
     std::string access = jsonAccess["access_token"];
 
-#if 1
     json poll{};
     if (statusPoll(poll, access) == ApiStatus::TokenExpired) {
         if (refreshAccessToken(jsonAccess, ecoBeeTokenURL, apiKey, token) == ApiStatus::OK) {
@@ -167,16 +166,8 @@ int main(int argc, char **argv) {
             throw ApiError("API polling error.");
         }
     }
-//    std::cout << poll.dump(4) << '\n';
     std::string thermostat{};
-    for (const auto &t: poll["revisionList"]) {
-        // 421866388280:Thermostat:true:230109012202:221221084857:230131181519:230131175500
-        thermostat = t;
-        std::cout << thermostat << '\n';
-    }
 
-#endif
-//    std::cout << thermostatJson.dump(4) << '\n';
     size_t idx = 0;
     for (std::string::size_type pos; (pos = thermostat.find(':')) != std::string::npos; thermostat.erase(0, pos + 1)) {
         token = thermostat.substr(0, pos);
@@ -205,15 +196,11 @@ int main(int argc, char **argv) {
                 break;
         }
         ++idx;
-//        std::cout << token << '\n';
     }
     if (idx == 6) {
         thermostatJson["internalUpdate"] = thermostat != thermostatJson["internalRevision"];
         thermostatJson["internalRevision"] = thermostat;
     }
-//    std::cout << thermostat << '\n';
-
-//    std::cout << thermostatJson.dump(4) << '\n';
 
     if (thermostatJson["runtimeUpdate"]) {
         auto [startDate, start, endDate, end, lastData] = runtimeIntervals(thermostatJson["lastData"]);

@@ -132,7 +132,6 @@ namespace ecoBee {
 
         url << R"(","includeSensors":)" << (includeSensors ? "true" : "false") << ',';
         url << R"("selection":{"selectionType":"thermostats","selectionMatch":")" << Thermostat << R"("}})";
-        std::cout << url.str() << '\n';
         return url.str();
     }
 
@@ -150,7 +149,7 @@ namespace ecoBee {
 
     [[nodiscard]] std::tuple<std::string,std::string,std::string,std::string,std::string> runtimeIntervals(const std::string& lastTime);
 
-    std::string processRuntimeData(const nlohmann::json &data, const InfluxConfig &influxConfig);
+    [[nodiscard]] std::string processRuntimeData(const nlohmann::json &data, const InfluxConfig &influxConfig);
 
     void influxPush(nlohmann::json &row, InfluxPush &influx, const std::string &date, const std::string &time);
 } // ecoBee

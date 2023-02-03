@@ -256,7 +256,6 @@ namespace ecoBee {
         std::string newLastTime{};
         InfluxPush influx(config.influxHost.value(), config.influxTLS.value(), config.influxPort.value(), config.influxDb.value());
 
-
         // Tokenize report column titles.
         auto columnList = tokenVector(data["columns"], ',');
         std::vector<std::string> sensorList{};
@@ -367,7 +366,7 @@ namespace ecoBee {
 
 //        std::cout << row.dump(4) << '\n';
         influx.newMeasurements();
-        influx.setMeasurementEpoch(date, time, "-0500");
+        influx.setMeasurementEpoch(date, time);
         bool dataWritten = false;
         for (auto item : row["humidity"].items()) {
             dataWritten |= influx.addMeasurement(prefix, escapeHeader(item.key()), item.value());
