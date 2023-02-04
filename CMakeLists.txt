@@ -45,7 +45,7 @@ add_executable(ecoBeeApi
         src/ecoBeeApi.cpp
         util/Config/ConfigFile.cpp util/XDG/XDGFilePaths.cpp util/Influx/InfluxPush.h util/Influx/InfluxPush.cpp
         util/File/Permissions.cpp src/ecoBeeApi/Api.cpp src/ecoBeeApi/Api.h
-        zone/src/tz.cpp
+        zone/src/tz.cpp util/File/StringComposite.cpp
         )
 
 target_link_libraries(ecoBeeApi

@@ -29,6 +29,7 @@
 #include <utility>
 #include <ConfigFile.h>
 #include "InfluxPush.h"
+#include "StringComposite.h"
 
 namespace ecoBee {
     struct InfluxConfig {
@@ -62,9 +63,7 @@ namespace ecoBee {
         else if (code == 14)
             return ApiStatus::TokenExpired;
         else {
-            std::stringstream ss{};
-            ss << "Code: " << code << ", Message: " << message;
-            throw ApiError(ss.str());
+            throw ApiError(ysh::StringComposite("Code:", code, ", Message: ", message));
         }
     }
 

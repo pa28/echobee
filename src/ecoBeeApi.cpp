@@ -7,6 +7,7 @@
 #include <sstream>
 #include "XDGFilePaths.h"
 #include "InputParser.h"
+#include "StringComposite.h"
 
 using namespace ecoBee;
 using json = nlohmann::json;
@@ -203,9 +204,7 @@ int main(int argc, char **argv) {
 
     if (thermostatJson["runtimeUpdate"]) {
         auto [startDate, start, endDate, end, lastData] = runtimeIntervals(thermostatJson["lastData"]);
-        std::stringstream ss{};
-        ss << startDate << ':' << start << "--" << endDate << ':' << end;
-        auto fileName = ss.str();
+        auto fileName = ysh::StringComposite(startDate, ':', start, "--", endDate, ':', end);
         json report{};
         if (runtimeReport(report, jsonAccess["access_token"],
                           runtimeReportUrl(DataColumns, true, startDate, start, endDate, end)) == ApiStatus::OK) {

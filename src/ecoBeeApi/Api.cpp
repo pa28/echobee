@@ -34,21 +34,16 @@ namespace ecoBee {
         request.setOpt(new cURLpp::Options::Url(url));
         request.setOpt(new cURLpp::Options::Verbose(false));
 
-        std::stringstream ss{};
         std::list<std::string> header;
         header.emplace_back("content-type: text/json;charset=UTF-8");
-        ss << "Authorization: Bearer " << token;
-        auto authHeader = ss.str();
-        ss.str("");
-        header.emplace_back(authHeader);
+        header.emplace_back(ysh::StringComposite("Authorization: Bearer ", token));
         request.setOpt(new cURLpp::Options::HttpHeader(header));
 
         request.setOpt(new curlpp::options::WriteStream(&response));
 
         request.perform();
         if (auto code = curlpp::infos::ResponseCode::get(request); code != 200 && code != 500) {
-            ss << "HTML error code: {}" << code;
-            throw HtmlError(ss.str());
+            throw HtmlError(ysh::StringComposite("HTML error code: ", code));
         }
 
         data = nlohmann::json::parse(response);
@@ -59,7 +54,6 @@ namespace ecoBee {
         std::stringstream response{};
         cURLpp::Cleanup cleaner;
         cURLpp::Easy request;
-        std::stringstream ss{};
 
         auto url = R"(https://api.ecobee.com/1/thermostat?format=json&body={"selection":{"selectionType":"registered",)"
                    R"(selectionMatch":"","includeRuntime":true}})";
@@ -69,17 +63,14 @@ namespace ecoBee {
 
         std::list<std::string> header;
         header.emplace_back("content-type: text/json");
-        ss << "Authorization: Bearer {}" << token;
-        auto authHeader = ss.str();
-        header.emplace_back(authHeader);
+        header.emplace_back(ysh::StringComposite("Authorization: Bearer ", token));
         request.setOpt(new cURLpp::Options::HttpHeader(header));
 
         request.setOpt(new curlpp::options::WriteStream(&response));
 
         request.perform();
         if (auto code = curlpp::infos::ResponseCode::get(request); code != 200) {
-            ss << "HTML error code: {}" << code;
-            throw HtmlError(ss.str());
+            throw HtmlError(ysh::StringComposite("HTML error code: ", code));
         }
 
         auto thermostat = nlohmann::json::parse(response);
@@ -97,9 +88,7 @@ namespace ecoBee {
      */
     ApiStatus refreshAccessToken(nlohmann::json &accessToken, const std::string &url, const std::string &apiKey,
                                  const std::string &token) {
-        std::stringstream ss{};
-        ss << "grant_type=refresh_token&&code=" << token << "&client_id=" << apiKey;
-        auto postData = ss.str();
+        auto postData = ysh::StringComposite("grant_type=refresh_token&&code=", token, "&client_id=", apiKey);
         std::stringstream response{};
         cURLpp::Cleanup cleaner;
         cURLpp::Easy request;
@@ -116,9 +105,7 @@ namespace ecoBee {
 
         request.perform();
         if (auto code = curlpp::infos::ResponseCode::get(request); code != 200) {
-            ss.str("");
-            ss << "HTML error code: " << code;
-            throw HtmlError(ss.str());
+            throw HtmlError(ysh::StringComposite("HTML error code: ", code));
         }
 
         accessToken = nlohmann::json::parse(response);
@@ -150,17 +137,13 @@ namespace ecoBee {
         std::list<std::string> header;
         header.emplace_back("Content-Type: text/json");
 
-        std::stringstream ss{};
-        ss << "Authorization: Bearer " << token;
-        header.emplace_back(ss.str());
+        header.emplace_back(ysh::StringComposite("Authorization: Bearer ", token));
         request.setOpt(new cURLpp::Options::HttpHeader(header));
         request.setOpt(new curlpp::options::WriteStream(&response));
 
         request.perform();
         if (auto code = curlpp::infos::ResponseCode::get(request); code != 200 && code != 500) {
-            ss.str("");
-            ss << "HTML error code: " << code;
-            throw HtmlError(ss.str());
+            throw HtmlError(ysh::StringComposite("HTML error code: ", code));
         }
 
         poll = nlohmann::json::parse(response);
@@ -196,9 +179,7 @@ namespace ecoBee {
         char buf[32];
         strftime(buf, 15, "%Y-%m-%d", &dtLast);
         std::string startTime{buf};
-        ss.str("");
-        ss << (dtLast.tm_hour*60 + dtLast.tm_min)/5;
-        auto startInt = ss.str();
+        auto startInt = std::to_string((dtLast.tm_hour*60 + dtLast.tm_min)/5);
 
         time_t now;
         time(&now);
@@ -206,9 +187,7 @@ namespace ecoBee {
         dtNow = gmtime(&now);
         strftime(buf, 15, "%Y-%m-%d", dtNow);
         std::string endTime{buf};
-        ss.str("");
-        ss << (dtNow->tm_hour*60 + dtNow->tm_min)/5;
-        auto endInt = ss.str();
+        auto endInt = std::to_string((dtNow->tm_hour*60 + dtNow->tm_min)/5);
         strftime(buf, 21, format.c_str(), dtNow);
 
         return {startTime,startInt,endTime,endInt,std::string{buf}};
