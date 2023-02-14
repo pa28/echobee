@@ -204,7 +204,7 @@ int main(int argc, char **argv) {
 
     if (thermostatJson["runtimeUpdate"]) {
         auto [startDate, start, endDate, end, lastData] = runtimeIntervals(thermostatJson["lastData"]);
-        auto fileName = ysh::StringComposite(startDate, ':', start, "--", endDate, ':', end);
+        auto fileName = ysh::StringComposite(startDate, ':', start, "--", endDate, ':', end, ".json");
         json report{};
         if (runtimeReport(report, jsonAccess["access_token"],
                           runtimeReportUrl(DataColumns, true, startDate, start, endDate, end)) == ApiStatus::OK) {
@@ -221,6 +221,7 @@ int main(int argc, char **argv) {
                 ofs.open(thermostatPath);
                 ofs << thermostatJson.dump(4) << '\n';
                 ofs.close();
+                remove(dataPath);
             }
         }
     }
