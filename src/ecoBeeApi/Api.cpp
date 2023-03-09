@@ -286,19 +286,21 @@ namespace ecoBee {
                  *  - Humidity.
                  */
                 for(size_t colIdx = 0; colIdx < columnList.size(); ++colIdx) {
-                    if (OperationTimeParam.find(columnList[colIdx]) != std::string_view::npos)
-                        reportJson["operations"]["time"][columnList[colIdx]] = reportVector[colIdx + 2];
-                    else if (OperationStateParam.find(columnList[colIdx]) != std::string_view::npos)
-                        reportJson["operations"]["state"][columnList[colIdx]] = reportVector[colIdx + 2];
-                    else if (columnList[colIdx].find("zoneHeatTemp") != std::string::npos ||
-                            columnList[colIdx].find("zoneCoolTemp") != std::string::npos)
-                        reportJson["operations"][columnList[colIdx]] = reportVector[colIdx + 2];
-                    else if (columnList[colIdx].find("Humidity") != std::string::npos)
-                        reportJson["humidity"][columnList[colIdx]] = reportVector[colIdx + 2];
-                    else if (columnList[colIdx].find("Temp") != std::string::npos)
-                        reportJson["temperature"][columnList[colIdx]] = reportVector[colIdx + 2];
-                    else
-                        reportJson["data"][columnList[colIdx]] = reportVector[colIdx + 2];
+                    if (!reportVector[colIdx + 2].empty()) {
+                        if (OperationTimeParam.find(columnList[colIdx]) != std::string_view::npos)
+                            reportJson["operations"]["time"][columnList[colIdx]] = reportVector[colIdx + 2];
+                        else if (OperationStateParam.find(columnList[colIdx]) != std::string_view::npos)
+                            reportJson["operations"]["state"][columnList[colIdx]] = reportVector[colIdx + 2];
+                        else if (columnList[colIdx].find("zoneHeatTemp") != std::string::npos ||
+                                 columnList[colIdx].find("zoneCoolTemp") != std::string::npos)
+                            reportJson["operations"][columnList[colIdx]] = reportVector[colIdx + 2];
+                        else if (columnList[colIdx].find("Humidity") != std::string::npos)
+                            reportJson["humidity"][columnList[colIdx]] = reportVector[colIdx + 2];
+                        else if (columnList[colIdx].find("Temp") != std::string::npos)
+                            reportJson["temperature"][columnList[colIdx]] = reportVector[colIdx + 2];
+                        else
+                            reportJson["data"][columnList[colIdx]] = reportVector[colIdx + 2];
+                    }
                 }
             }
 
@@ -331,11 +333,10 @@ namespace ecoBee {
              * The data row is ready to use, sent to an InfluxDB for example. If the reportJson structure is
              * empty, the CSV row had no data.
              */
-            if (reportJson.empty()) {
-                return newLastTime;
+            if (!reportJson.empty()) {
+                influxPush(reportJson, influx, reportVector[0], reportVector[1]);
+                newLastTime = localToGMT(reportVector[0], reportVector[1]);
             }
-            influxPush(reportJson, influx, reportVector[0], reportVector[1]);
-            newLastTime = localToGMT(reportVector[0], reportVector[1]);
         }
 
         return newLastTime;
