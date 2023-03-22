@@ -424,7 +424,10 @@ namespace ecoBee {
         timeOpList.emplace_back("Heat");
         timeOpList.emplace_back("Cool");
 
-        std::string HVACmode = row["operations"]["state"]["zoneHVACmode"];
+        std::string HVACmode = "heatOff";
+        if (row["operations"]["state"]["zoneHVACmode"].is_string())
+            HVACmode = row["operations"]["state"]["zoneHVACmode"];
+
         if (HVACmode == "heatOff") {
             for (auto& op : timeOpList)
                 op.state = false;
@@ -436,9 +439,15 @@ namespace ecoBee {
             timeOpList[1].state = false;
         }
 
-        timeOpList[0].seconds = strtoul(std::string{row["operations"]["time"]["fan"]}.c_str(), nullptr, 10);
-        timeOpList[1].seconds = strtoul(std::string{row["operations"]["time"]["auxHeat1"]}.c_str(), nullptr, 10);
-        timeOpList[2].seconds = strtoul(std::string{row["operations"]["time"]["compCool1"]}.c_str(), nullptr, 10);
+        for (auto &op : timeOpList)
+            op.seconds = 0;
+
+        if (row["operations"]["time"]["fan"].is_string())
+            timeOpList[0].seconds = strtoul(std::string{row["operations"]["time"]["fan"]}.c_str(), nullptr, 10);
+        if (row["operations"]["time"]["fan"].is_string())
+            timeOpList[1].seconds = strtoul(std::string{row["operations"]["time"]["auxHeat1"]}.c_str(), nullptr, 10);
+        if (row["operations"]["time"]["fan"].is_string())
+            timeOpList[2].seconds = strtoul(std::string{row["operations"]["time"]["compCool1"]}.c_str(), nullptr, 10);
 
         for (auto& op : timeOpList) {
             op.timestamp = influx.getMeasurementEpoch();
