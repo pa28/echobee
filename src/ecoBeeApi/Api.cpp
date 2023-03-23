@@ -400,23 +400,29 @@ namespace ecoBee {
         bool dataWritten = false;
 
         for (const auto& item : row["humidity"].items()) {
-            dataWritten |= influx.addMeasurement(prefix, escapeHeader(item.key()), item.value());
+            if (!item.value().empty())
+                dataWritten |= influx.addMeasurement(prefix, escapeHeader(item.key()), item.value());
         }
 
         for (const auto& item : row["temperature"].items()) {
-            dataWritten |= influx.addMeasurement(prefix, escapeHeader(item.key()), FtoC(item.value()));
+            if (!item.value().empty())
+                dataWritten |= influx.addMeasurement(prefix, escapeHeader(item.key()), FtoC(item.value()));
         }
 
         for (const auto& item : row["airPressure"].items()) {
-            [[maybe_unused]] auto v = item.value();
-            [[maybe_unused]] auto p = hectoPascals(v);
-            dataWritten |= influx.addMeasurement(prefix, escapeHeader(item.key()), hectoPascals(item.value()));
+            if (!item.value().empty()) {
+                [[maybe_unused]] auto v = item.value();
+                [[maybe_unused]] auto p = hectoPascals(v);
+                dataWritten |= influx.addMeasurement(prefix, escapeHeader(item.key()), hectoPascals(item.value()));
+            }
         }
 
         if (row["operations"]["state"]["HVACmode"] == "heat") {
-            dataWritten += influx.addMeasurement(prefix, "SetPoint", FtoC(row["operations"]["zoneHeatTemp"]));
+            if (!row["operations"]["zoneHeatTemp"].empty())
+                dataWritten += influx.addMeasurement(prefix, "SetPoint", FtoC(row["operations"]["zoneHeatTemp"]));
         } else if (row["operations"]["state"]["zoneHVACmode"] == "cool") {
-            dataWritten += influx.addMeasurement(prefix, "SetPoint", FtoC(row["operations"]["zoneCoolTemp"]));
+            if (!row["operations"]["zoneCoolTemp"].empty())
+                dataWritten += influx.addMeasurement(prefix, "SetPoint", FtoC(row["operations"]["zoneCoolTemp"]));
         }
 
         /*
