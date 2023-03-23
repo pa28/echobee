@@ -152,13 +152,27 @@ namespace ecoBee {
     }
 
     std::string localToGMT(const std::string &date, const std::string &time) {
+        // Gather the local time zone and DST information.
+        std::tm localDateTime{};
+        time_t epoch;
+        ::time(&epoch);
+
+        // Convert the provided local time to GMT.
+        localDateTime = *(localtime(&epoch));
         std::string dateTimeString = date;
         dateTimeString.append("T").append(time);
 
         std::string format{DateTimeFormat};
         std::tm dateTime{};
         strptime(dateTimeString.c_str(), format.c_str(), &dateTime);
-        auto epoch = ::mktime(&dateTime);
+
+        // Bring in the time zone and GMT offset information gathered earlier.
+        dateTime.tm_zone = localDateTime.tm_zone;
+        dateTime.tm_gmtoff = localDateTime.tm_gmtoff;
+        dateTime.tm_isdst = localDateTime.tm_isdst;
+
+        // Complete conversion to GMT.
+        epoch = ::mktime(&dateTime);
         char buf[32];
         strftime(buf, 31, format.c_str(), gmtime(&epoch));
         return std::string{buf};
