@@ -207,21 +207,34 @@ namespace ecoBee {
      * @tparam Delim The type of delimiter.
      * @param source The source string.
      * @param delim The delimiter value.
-     * @return A tuple with the found token (or empty) and the remainder of the source (or empty).
+     * @return A tuple with the found token (or empty), the remainder of the source (or empty), and true when done.
      */
     template<class Delim>
     requires TokenDelimiter<Delim>
-    std::tuple<std::string,std::string> tokenizeString(const std::string& source, Delim delim) {
+    std::tuple<std::string,std::string,bool> tokenizeString(const std::string& source, Delim delim) {
+        size_t delimSize{};
+
         if (source.empty())
-            return {std::string{},std::string{}};
-        auto pos = source.find(delim);
-        if (pos == std::string::npos)
-            return {source,std::string{}};
-        if constexpr (std::is_same_v<Delim,char>) {
-            return {source.substr(0,pos),source.substr(pos+1)};
-        } else {
-            return {source.substr(0,pos),source.substr(pos+delim.length())};
+            return {std::string{},std::string{},false};
+
+        if constexpr (std::is_same_v<Delim,char>)
+            delimSize = 1;
+        else
+            delimSize = delim.size();
+
+        auto pos0 = source.find(delim);
+        if (pos0 == std::string::npos)
+            return {source,std::string{},true};
+        if (pos0 == 0) {
+            auto rest = source.substr(pos0 + delimSize);
+            auto pos1 = rest.find(delim);
+            if (pos1 == 0)
+                return {std::string{}, rest, true};
+            if (pos1 == std::string::npos)
+                return {rest, std::string{}, true};
+            return {rest.substr(0,pos1), rest.substr(pos1), true};
         }
+        return {source.substr(0,pos0), source.substr(pos0), true};
     }
 
     /**
@@ -235,7 +248,8 @@ namespace ecoBee {
     requires TokenDelimiter<Delim>
     std::vector<std::string> tokenVector(const std::string& source, Delim delim) {
         std::vector<std::string> result{};
-        for (auto token = tokenizeString(source,delim); !get<0>(token).empty(); token = tokenizeString(get<1>(token),delim)){
+        for (auto token = tokenizeString(source,delim); get<2>(token); token = tokenizeString(get<1>(token),delim)){
+            auto v = get<0>(token);
             result.emplace_back(get<0>(token));
         }
         return result;
