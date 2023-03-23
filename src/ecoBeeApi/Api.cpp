@@ -383,9 +383,17 @@ namespace ecoBee {
         return workingHdr;
     }
 
-    std::string FtoC(const std::string& f) { return std::to_string((atof(f.c_str()) - 32.f)  * 5.f/9.f); }
+    std::string FtoC(const std::string& f) {
+        if (f.empty())
+            return f;
+        return std::to_string((atof(f.c_str()) - 32.f)  * 5.f/9.f);
+    }
 
-    std::string hectoPascals(const std::string& s) { return std::to_string(atof(s.c_str()) / 100.f); }
+    std::string hectoPascals(const std::string& s) {
+        if (s.empty())
+            return s;
+        return std::to_string(atof(s.c_str()) / 100.f);
+    }
 
     void timeBasedOperation(InfluxPush &influx, const std::string& name, const std::string& data, const std::string& time,
                             int seconds, bool state);
@@ -405,16 +413,11 @@ namespace ecoBee {
         }
 
         for (const auto& item : row["temperature"].items()) {
-            if (!item.value().empty())
-                dataWritten |= influx.addMeasurement(prefix, escapeHeader(item.key()), FtoC(item.value()));
+            dataWritten |= influx.addMeasurement(prefix, escapeHeader(item.key()), FtoC(item.value()));
         }
 
         for (const auto& item : row["airPressure"].items()) {
-            if (!item.value().empty()) {
-                [[maybe_unused]] auto v = item.value();
-                [[maybe_unused]] auto p = hectoPascals(v);
-                dataWritten |= influx.addMeasurement(prefix, escapeHeader(item.key()), hectoPascals(item.value()));
-            }
+            dataWritten |= influx.addMeasurement(prefix, escapeHeader(item.key()), hectoPascals(item.value()));
         }
 
         if (row["operations"]["state"]["HVACmode"] == "heat") {
