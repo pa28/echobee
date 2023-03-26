@@ -359,7 +359,7 @@ namespace ecoBee {
              * The data row is ready to use, sent to an InfluxDB for example. If the reportJson structure is
              * empty, the CSV row had no data.
              */
-            if (reportJson.empty()) {
+            if (reportVector.at(2).empty() || sensorVector.at(2).empty()) {
                 return newLastTime;
             }
             influxPush(reportJson, influx, reportVector[0], reportVector[1]);
