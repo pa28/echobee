@@ -149,7 +149,8 @@ namespace ecoBee {
 
     [[nodiscard]] std::tuple<std::string,std::string,std::string,std::string,std::string> runtimeIntervals(const std::string& lastTime);
 
-    [[nodiscard]] std::string processRuntimeData(const nlohmann::json &data, const InfluxConfig &influxConfig);
+    [[nodiscard]] std::string
+    processRuntimeData(const nlohmann::json &data, const InfluxConfig &influxConfig, std::string &lastData);
 
     void influxPush(nlohmann::json &row, InfluxPush &influx, const std::string &date, const std::string &time);
 } // ecoBee

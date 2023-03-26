@@ -277,9 +277,9 @@ namespace ecoBee {
      * @param data The Json structure returned by the runtime report.
      * @return A std::string with the GMT time string of last data row processed. Empty if no data processed.
      */
-    std::string processRuntimeData(const nlohmann::json &data, const InfluxConfig &config) {
+    std::string processRuntimeData(const nlohmann::json &data, const InfluxConfig &config, std::string &lastData) {
         size_t reportRowCount = data["reportList"][0]["rowCount"];
-        std::string newLastTime{};
+        std::string newLastTime{lastData};
         InfluxPush influx(config.influxHost.value(), config.influxTLS.value(), config.influxPort.value(), config.influxDb.value());
 
         // Tokenize report column titles.

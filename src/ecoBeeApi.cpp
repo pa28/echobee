@@ -126,7 +126,8 @@ int main(int argc, char **argv) {
         std::ifstream ifs{dataPath};
         auto report = json::parse(ifs);
         ifs.close();
-        [[maybe_unused]] auto lastData = processRuntimeData(report, influxConfig);
+        std::string lastDate{};
+        [[maybe_unused]] auto lastData = processRuntimeData(report, influxConfig, lastDate);
         exit(0);
     }
 
@@ -203,7 +204,8 @@ int main(int argc, char **argv) {
     }
 
     if (thermostatJson["runtimeUpdate"]) {
-        auto [startDate, start, endDate, end, lastData] = runtimeIntervals(thermostatJson["lastData"]);
+        std::string lastThermostatData = thermostatJson["lastData"];
+        auto [startDate, start, endDate, end, lastData] = runtimeIntervals(lastThermostatData);
         auto fileName = ysh::StringComposite(startDate, ':', start, "--", endDate, ':', end, ".json");
         json report{};
         if (runtimeReport(report, jsonAccess["access_token"],
@@ -215,7 +217,7 @@ int main(int argc, char **argv) {
             ofs.open(dataPath);
             ofs << report.dump(4) << '\n';
             ofs.close();
-            lastData = processRuntimeData(report, influxConfig);
+            lastData = processRuntimeData(report, influxConfig, lastThermostatData);
             if (!lastData.empty()) {
                 thermostatJson["lastData"] = lastData;
                 ofs.open(thermostatPath);
