@@ -311,9 +311,10 @@ namespace ecoBee {
                  * empty, the CSV row had no data.
                  */
                 if (reportVector.at(2).empty() || sensorVector.at(2).empty()) {
-                    newLastTime = localToGMT(reportVector[0], reportVector[1]);
                     return newLastTime;
                 }
+                newLastTime = localToGMT(reportVector[0], reportVector[1]);
+
                 /**
                  * Categorize data into:
                  *  - Operations time data. These are data that indicate how long during a 5 minute interval
