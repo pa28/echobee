@@ -305,6 +305,15 @@ namespace ecoBee {
 
             // Process thermostat/system data
             if (columnList.size() + 2 == reportVector.size()) {
+
+                /**
+                 * The data row is ready to use, sent to an InfluxDB for example. If the reportJson structure is
+                 * empty, the CSV row had no data.
+                 */
+                if (reportVector.at(2).empty() || sensorVector.at(2).empty()) {
+                    newLastTime = localToGMT(reportVector[0], reportVector[1]);
+                    return newLastTime;
+                }
                 /**
                  * Categorize data into:
                  *  - Operations time data. These are data that indicate how long during a 5 minute interval
@@ -354,16 +363,6 @@ namespace ecoBee {
                     }
                 }
             }
-
-            /**
-             * The data row is ready to use, sent to an InfluxDB for example. If the reportJson structure is
-             * empty, the CSV row had no data.
-             */
-            if (reportJson.empty()) {
-                return newLastTime;
-            }
-            influxPush(reportJson, influx, reportVector[0], reportVector[1]);
-            newLastTime = localToGMT(reportVector[0], reportVector[1]);
         }
 
         return newLastTime;
