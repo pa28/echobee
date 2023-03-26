@@ -364,6 +364,7 @@ namespace ecoBee {
                     }
                 }
             }
+            influxPush(reportJson, influx, reportVector[0], reportVector[1]);
         }
 
         return newLastTime;
