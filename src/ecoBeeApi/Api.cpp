@@ -311,7 +311,7 @@ namespace ecoBee {
                  * empty, the CSV row had no data.
                  */
                 if (reportVector.at(2).empty() || sensorVector.at(2).empty()) {
-                    return newLastTime;
+                    continue;   // Skipp lines with incomplete data but continue scan in case more data follows.
                 }
                 newLastTime = localToGMT(reportVector[0], reportVector[1]);
 
